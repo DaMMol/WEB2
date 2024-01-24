@@ -27,9 +27,27 @@ const getAllCats = async (): Promise<Cat[]> => {
 
 // TODO: create getCat function to get single cat
 
+const getCat = async (cat_id: number) => {
+  const cat = await promisePool.execute<RowDataPacket[] & Cat[]>(
+    `
+    SELECT * FROM sssf_cat WHERE cat_id = ?
+    `,
+    [cat_id]
+  );
+  if (cat === null) {
+    throw new Error('No cat found');
+  }
+  return cat;
+};
+
 // TODO: use Utility type to modify Cat type for 'data'.
 // Note that owner is not User in this case. It's just a number (user_id)
-const addCat = async (data): Promise<MessageResponse> => {
+const addCat = async (
+  data: Pick<
+    Cat,
+    'cat_name' | 'weight' | 'owner' | 'filename' | 'birthdate' | 'lat' | 'lng'
+  >
+): Promise<MessageResponse> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
     `
     INSERT INTO sssf_cat (cat_name, weight, owner, filename, birthdate, coords) 
@@ -55,6 +73,37 @@ const addCat = async (data): Promise<MessageResponse> => {
 // if role is admin, update any cat
 // if role is user, update only cats owned by user
 // You can use updateUser function from userModel as a reference for SQL
+
+const updateCat = async (
+  cat: Partial<Cat>,
+  catId: number,
+  userID: number,
+  role: string
+) => {
+  if (role === 'admin') {
+    const [headers] = await promisePool.execute<ResultSetHeader>(
+      `
+      UPDATE sssf_cat SET ? WHERE cat_id = ?
+      `,
+      [cat, catId]
+    );
+    if (headers.affectedRows === 0) {
+      throw new CustomError('No cats updated', 400);
+    }
+    return {message: 'Cat updated'};
+  } else {
+    const [headers] = await promisePool.execute<ResultSetHeader>(
+      `
+      UPDATE sssf_cat SET ? WHERE cat_id = ? AND owner = ?
+      `,
+      [cat, catId, userID]
+    );
+    if (headers.affectedRows === 0) {
+      throw new CustomError('No cats updated', 400);
+    }
+    return {message: 'Cat updated'};
+  }
+};
 
 const deleteCat = async (catId: number): Promise<MessageResponse> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
