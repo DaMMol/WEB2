@@ -28,7 +28,7 @@ const getAllCats = async (): Promise<Cat[]> => {
 // TODO: create getCat function to get single cat
 
 const getCat = async (cat_id: number) => {
-  const cat = await promisePool.execute<RowDataPacket[] & Cat[]>(
+  const [cat] = await promisePool.execute<RowDataPacket[] & Cat[]>(
     `
     SELECT * FROM sssf_cat WHERE cat_id = ?
     `,
@@ -37,16 +37,13 @@ const getCat = async (cat_id: number) => {
   if (cat === null) {
     throw new Error('No cat found');
   }
-  return cat;
+  return cat[0];
 };
 
 // TODO: use Utility type to modify Cat type for 'data'.
 // Note that owner is not User in this case. It's just a number (user_id)
 const addCat = async (
-  data: Pick<
-    Cat,
-    'cat_name' | 'weight' | 'owner' | 'filename' | 'birthdate' | 'lat' | 'lng'
-  >
+  data: Omit<Cat, 'cat_id'> & {owner: number}
 ): Promise<MessageResponse> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
     `
