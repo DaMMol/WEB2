@@ -39,21 +39,27 @@ const catGet = async (req: Request, res: Response<Cat>, next: NextFunction) => {
   try {
     const id = Number(req.params.id);
     const cat = await getCat(id);
-    res.json(cat);
+    if (cat) {
+      res.json(cat);
+      return;
+    }
   } catch (error) {
     next(error);
   }
 };
 
 // TODO: create catPost function to add new cat
+// catPost should use addCat function from catModel
+// catPost should use validationResult to validate req.body
+// catPost should use req.file to get filename
+// catPost should use res.locals.coords to get lat and lng (see middlewares.ts)
+// catPost should use req.user to get user_id and role (see passport/index.ts and express.d.ts)
 const catPost = async (
-  req: Request<{}, {}, Omit<Cat, 'ownerS'> & {owner: number}>,
+  req: Request<{}, {}, Omit<Cat, 'owner'> & {owner: number}>,
   res: Response<MessageResponse, {coords: [number, number]}>,
   next: NextFunction
 ) => {
-  // catPost should use addCat function from catModel
-  // catPost should use validationResult to validate req.body
-  const errors = validationResult(req.body);
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const messages: string = errors
       .array()
@@ -63,9 +69,6 @@ const catPost = async (
     next(new CustomError(messages, 400));
     return;
   }
-  // catPost should use req.file to get filename
-  // catPost should use res.locals.coords to get lat and lng (see middlewares.ts)
-  // catPost should use req.user to get user_id and role (see passport/index.ts and express.d.ts)
   try {
     const result = await addCat({
       ...req.body,
@@ -97,8 +100,8 @@ const catPut = async (
 
   try {
     const id = Number(req.params.id);
-    const cat = req.body;
-    const result = await updateCat(cat, id, req.user!);
+
+    const result = await updateCat(req.body, id, req.user!);
     res.json(result);
   } catch (error) {
     next(error);

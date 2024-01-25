@@ -16,7 +16,6 @@ const getAllUsers = async (): Promise<User[]> => {
   }
   return rows;
 };
-
 const getUser = async (userId: number): Promise<User> => {
   const [rows] = await promisePool.execute<RowDataPacket[] & User[]>(
     `
@@ -34,14 +33,14 @@ const getUser = async (userId: number): Promise<User> => {
 
 // TODO: create addUser function
 const addUser = async (
-  user: Pick<User, 'user_name' | 'email' | 'role' | 'password'>
+  user: Omit<User, 'user_id'>
 ): Promise<MessageResponse> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
     `
-    INSERT INTO sssf_User (user_name, email, role, password
+    INSERT INTO sssf_user (user_name, email, role, password)
     VALUES (?, ?, ?, ?)
     `,
-    [user.user_name, user.email, user.role, user.password]
+    [user.user_name, user.email, 'user', user.password]
   );
   if (headers.affectedRows === 0) {
     throw new CustomError('No users added', 400);

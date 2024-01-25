@@ -48,11 +48,11 @@ const userGet = async (
 // - password should be at least 5 characters long
 // userPost should use bcrypt to hash password
 const userPost = async (
-  req: Request<{}, {}, Pick<User, 'user_name' | 'email' | 'role' | 'password'>>,
+  req: Request<{}, {}, Omit<User, 'user_id'>>,
   res: Response<MessageResponse>,
   next: NextFunction
 ) => {
-  const errors = validationResult(req.body);
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const messages: string = errors
       .array()
@@ -63,9 +63,12 @@ const userPost = async (
     return;
   }
   try {
-    const password = await bcrypt.hash(req.body.password, salt);
+    if (req.body.password.length < 5) {
+      next(new CustomError('Password is too short', 400));
+    }
+    const pass = await bcrypt.hash(req.body.password, salt);
 
-    const result = await addUser({...req.body, password});
+    const result = await addUser({...req.body, password: pass});
     res.json(result);
   } catch (error) {
     next(error);
@@ -126,7 +129,7 @@ const userPutCurrent = async (
   try {
     const user = req.body;
 
-    const result = await updateUser(user, req.params.id);
+    const result = await updateUser(user, req.user!.user_id!);
 
     res.json(result);
   } catch (error) {
@@ -144,7 +147,7 @@ const userDelete = async (
   res: Response<MessageResponse>,
   next: NextFunction
 ) => {
-  const errors = validationResult(req.body);
+  const errors = validationResult(req.params);
   if (!errors.isEmpty()) {
     const messages: string = errors
       .array()
