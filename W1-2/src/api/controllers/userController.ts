@@ -13,6 +13,12 @@ import {MessageResponse} from '../../types/MessageTypes';
 import {validationResult} from 'express-validator';
 const salt = bcrypt.genSaltSync(12);
 
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+function isValidEmail(email: string): boolean {
+  return emailRegex.test(email);
+}
+
 const userListGet = async (
   _req: Request,
   res: Response<User[]>,
@@ -63,8 +69,14 @@ const userPost = async (
     return;
   }
   try {
+    if (req.body.user_name.length < 3) {
+      next(new CustomError('Username is too short', 400));
+    }
     if (req.body.password.length < 5) {
       next(new CustomError('Password is too short', 400));
+    }
+    if (!isValidEmail(req.body.email)) {
+      next(new CustomError('Email is not valid', 400));
     }
     const pass = await bcrypt.hash(req.body.password, salt);
 
