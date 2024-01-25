@@ -1,7 +1,7 @@
 import {promisePool} from '../../database/db';
 import CustomError from '../../classes/CustomError';
 import {ResultSetHeader, RowDataPacket} from 'mysql2';
-import {Cat} from '../../types/DBTypes';
+import {Cat, User} from '../../types/DBTypes';
 import {MessageResponse, UploadResponse} from '../../types/MessageTypes';
 
 const getAllCats = async (): Promise<Cat[]> => {
@@ -43,7 +43,7 @@ const getCat = async (cat_id: number) => {
 // TODO: use Utility type to modify Cat type for 'data'.
 // Note that owner is not User in this case. It's just a number (user_id)
 const addCat = async (
-  data: Omit<Cat, 'cat_id'> & {owner: number}
+  data: Omit<Cat, 'owner'> & {owner: number}
 ): Promise<MessageResponse> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
     `
@@ -74,10 +74,9 @@ const addCat = async (
 const updateCat = async (
   cat: Partial<Cat>,
   catId: number,
-  userID: number,
-  role: string
+  user: Partial<User>
 ) => {
-  if (role === 'admin') {
+  if (user.role === 'admin') {
     const [headers] = await promisePool.execute<ResultSetHeader>(
       `
       UPDATE sssf_cat SET ? WHERE cat_id = ?
@@ -93,7 +92,7 @@ const updateCat = async (
       `
       UPDATE sssf_cat SET ? WHERE cat_id = ? AND owner = ?
       `,
-      [cat, catId, userID]
+      [cat, catId, user.user_id]
     );
     if (headers.affectedRows === 0) {
       throw new CustomError('No cats updated', 400);

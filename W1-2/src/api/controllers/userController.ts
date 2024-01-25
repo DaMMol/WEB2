@@ -63,15 +63,10 @@ const userPost = async (
     return;
   }
   try {
-    const pass = await bcrypt.hash(req.body.password, salt);
-    const user: Pick<User, 'user_name' | 'email' | 'role' | 'password'> = {
-      user_name: req.body.user_name,
-      email: req.body.email,
-      role: req.body.role,
-      password: pass,
-    };
-    const result = await addUser(user);
-    res.send(result);
+    const password = await bcrypt.hash(req.body.password, salt);
+
+    const result = await addUser({...req.body, password});
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -47,13 +47,13 @@ const catGet = async (req: Request, res: Response<Cat>, next: NextFunction) => {
 
 // TODO: create catPost function to add new cat
 const catPost = async (
-  req: Request<{}, {}, Omit<Cat, 'cat_id'> & {owner: number}>,
+  req: Request<{}, {}, Omit<Cat, 'ownerS'> & {owner: number}>,
   res: Response<MessageResponse, {coords: [number, number]}>,
   next: NextFunction
 ) => {
   // catPost should use addCat function from catModel
   // catPost should use validationResult to validate req.body
-  const errors = validationResult(req);
+  const errors = validationResult(req.body);
   if (!errors.isEmpty()) {
     const messages: string = errors
       .array()
@@ -67,16 +67,12 @@ const catPost = async (
   // catPost should use res.locals.coords to get lat and lng (see middlewares.ts)
   // catPost should use req.user to get user_id and role (see passport/index.ts and express.d.ts)
   try {
-    const cat: Omit<Cat, 'cat_id'> & {owner: number} = {
-      cat_name: req.body.cat_name,
-      weight: req.body.weight,
-      filename: req.file?.filename || '',
-      birthdate: req.body.birthdate,
+    const result = await addCat({
+      ...req.body,
       lat: res.locals.coords[0],
       lng: res.locals.coords[1],
-      owner: req.user.user_id,
-    };
-    const result = await addCat(cat);
+      filename: req.file?.filename || '',
+    });
     res.json(result);
   } catch (error) {
     next(error);
@@ -102,7 +98,7 @@ const catPut = async (
   try {
     const id = Number(req.params.id);
     const cat = req.body;
-    const result = await updateCat(cat, id, req.user.user_id, req.user.role);
+    const result = await updateCat(cat, id, req.user!);
     res.json(result);
   } catch (error) {
     next(error);
