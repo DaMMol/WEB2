@@ -2,7 +2,7 @@ import {promisePool} from '../../database/db';
 import CustomError from '../../classes/CustomError';
 import {ResultSetHeader, RowDataPacket} from 'mysql2';
 import {Cat, User} from '../../types/DBTypes';
-import {MessageResponse, UploadResponse} from '../../types/MessageTypes';
+import {MessageResponse} from '../../types/MessageTypes';
 
 const getAllCats = async (): Promise<Cat[]> => {
   const [rows] = await promisePool.execute<RowDataPacket[] & Cat[]>(

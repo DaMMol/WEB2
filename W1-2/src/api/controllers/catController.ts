@@ -9,7 +9,7 @@ import {Request, Response, NextFunction} from 'express';
 import CustomError from '../../classes/CustomError';
 import {validationResult} from 'express-validator';
 import {MessageResponse} from '../../types/MessageTypes';
-import {Cat, User} from '../../types/DBTypes';
+import {Cat} from '../../types/DBTypes';
 
 const catListGet = async (
   _req: Request,
