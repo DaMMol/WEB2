@@ -7,12 +7,12 @@ import CustomError from '../../classes/CustomError';
 // TODO: create following functions:
 // - catGetByUser - get all cats by current user id
 const catGetByUser = async (
-  req: Request<{id: String}>,
+  req: Request,
   res: Response<Cat[]>,
   next: NextFunction
 ) => {
   try {
-    const cats = await CatModel.find({owner: req.params.id});
+    const cats = await CatModel.find({owner: req.user!._id});
     res.json(cats);
   } catch (error) {
     next(error);
@@ -41,7 +41,7 @@ const catPutAdmin = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (req.user!.role !== 'admin') {
       next(new CustomError('Only admins allowed', 403));
     }
     const cat = await CatModel.findByIdAndUpdate(req.params.id);
@@ -62,7 +62,7 @@ const catDeleteAdmin = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (req.user!.role !== 'admin') {
       next(new CustomError('Only admins allowed', 403));
     }
     const cat = await CatModel.findByIdAndDelete(req.params.id);
@@ -87,7 +87,7 @@ const catDelete = async (
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    if (cat!.owner === req.user?._id) {
+    if (cat!.owner === req.user!._id) {
       const ripcat = await CatModel.findByIdAndDelete(req.params.id);
       res.json({message: 'Cat deleted'});
     }
@@ -107,7 +107,7 @@ const catPut = async (
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    if (cat!.owner === req.user?._id) {
+    if (cat!.owner === req.user!._id) {
       const updatedcat = await CatModel.findByIdAndUpdate(
         req.params.id,
         req.body
