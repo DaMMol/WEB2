@@ -4,7 +4,7 @@ import {User} from '../../types/DBTypes';
 
 const userSchema = new mongoose.Schema({
   user_name: String,
-  email: String,
+  email: {type: String, unique: true},
   role: {
     type: String,
     enum: ['user', 'admin'],
