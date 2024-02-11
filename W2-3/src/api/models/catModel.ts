@@ -2,21 +2,28 @@ import mongoose, {Types} from 'mongoose';
 import {Cat} from '../../types/DBTypes';
 
 // TODO: mongoose schema for cat
-const catSchema = new mongoose.Schema({
-  cat_name: String,
-  weight: Number,
-  filename: String,
-  birthdate: String,
-  location: {
-    type: String,
-    coordinates: [Number, Number],
+const catSchema = new mongoose.Schema<Cat>(
+  {
+    cat_name: String,
+    weight: Number,
+    filename: String,
+    birthdate: String,
+    location: {
+      type: {
+        $type: String,
+        enum: ['Point'],
+      },
+      coordinates: {
+        $type: [Number],
+      },
+    },
+    owner: {
+      $type: Types.ObjectId,
+      ref: 'User',
+    },
   },
-  owner: {
-    _id: Types.ObjectId,
-    user_name: String,
-    email: String,
-  },
-});
+  {typeKey: '$type'}
+);
 
 const CatModel = mongoose.model<Cat>('Cat', catSchema);
 

@@ -1,6 +1,6 @@
 import {Request, Response, NextFunction} from 'express';
 import {MessageResponse} from '../../types/MessageTypes';
-import {Cat} from '../../types/DBTypes';
+import {Cat, User} from '../../types/DBTypes';
 import CatModel from '../models/catModel';
 import CustomError from '../../classes/CustomError';
 
@@ -21,13 +21,17 @@ const catGetByUser = async (
 
 // - catGetByBoundingBox - get all cats by bounding box coordinates (getJSON)
 const catGetByBoundingBox = async (
-  req: Request<{coord1: string; coord2: string}>,
+  req: Request<{bottomLeft: string; topRight: string}>,
   res: Response<Cat[]>,
   next: NextFunction
 ) => {
   try {
-    const coordinates = [req.params.coord1, req.params.coord2];
-    const cats = await CatModel.find({location: coordinates});
+    const [lon1, lat1] = (req.query.bottomLeft as string).split(',');
+    const [lon2, lat2] = (req.query.topRight as string).split(',');
+    const cats = await CatModel.find({
+      'location.coordinates.0': {$gte: lat1, $lte: lat2},
+      'location.coordinates.1': {$gte: lon1, $lte: lon2},
+    });
     res.json(cats);
   } catch (error) {
     next(error);
@@ -37,19 +41,21 @@ const catGetByBoundingBox = async (
 // - catPutAdmin - only admin can change cat owner
 const catPutAdmin = async (
   req: Request<{id: string}, {}, Cat>,
-  res: Response<MessageResponse>,
+  res: Response<MessageResponse & {data: Cat}>,
   next: NextFunction
 ) => {
   try {
     if (res.locals.user.role !== 'admin') {
       next(new CustomError('Only admins allowed', 403));
     }
-    const cat = await CatModel.findByIdAndUpdate(req.params.id);
+    const cat = await CatModel.findByIdAndUpdate(req.params.id, req.body, {
+      returnDocument: 'after',
+    }).populate('owner');
 
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    res.json({message: 'Cat updated'});
+    res.json({message: 'Cat updated', data: cat as Cat});
   } catch (error) {
     next(error);
   }
@@ -58,7 +64,7 @@ const catPutAdmin = async (
 // - catDeleteAdmin - only admin can delete cat
 const catDeleteAdmin = async (
   req: Request<{id: string}>,
-  res: Response<MessageResponse>,
+  res: Response<MessageResponse & {data: Cat}>,
   next: NextFunction
 ) => {
   try {
@@ -70,7 +76,7 @@ const catDeleteAdmin = async (
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    res.json({message: 'Cat deleted'});
+    res.json({message: 'Cat deleted', data: cat as unknown as Cat});
   } catch (error) {
     next(error);
   }
@@ -79,7 +85,7 @@ const catDeleteAdmin = async (
 // - catDelete - only owner can delete cat
 const catDelete = async (
   req: Request<{id: string}>,
-  res: Response<MessageResponse>,
+  res: Response<MessageResponse & {data: Cat}>,
   next: NextFunction
 ) => {
   try {
@@ -87,9 +93,9 @@ const catDelete = async (
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    if (cat!.owner === res.locals.user._id) {
+    if (String(cat!.owner._id) === res.locals.user._id) {
       const ripcat = await CatModel.findByIdAndDelete(req.params.id);
-      res.json({message: 'Cat deleted'});
+      res.json({message: 'Cat deleted', data: ripcat as unknown as Cat});
     }
   } catch (error) {
     next(error);
@@ -99,7 +105,7 @@ const catDelete = async (
 // - catPut - only owner can update cat
 const catPut = async (
   req: Request<{id: string}, {}, Cat>,
-  res: Response<MessageResponse>,
+  res: Response<MessageResponse & {data: Cat}>,
   next: NextFunction
 ) => {
   try {
@@ -107,13 +113,17 @@ const catPut = async (
     if (!cat) {
       next(new CustomError('Cat not found', 404));
     }
-    if (cat!.owner === res.locals.user._id) {
+    if (String(cat!.owner._id) === res.locals.user._id) {
       const updatedcat = await CatModel.findByIdAndUpdate(
         req.params.id,
-        req.body
-      );
-      res.json({message: 'Cat updated'});
+        req.body,
+        {
+          returnDocument: 'after',
+        }
+      ).populate('owner');
+      res.json({message: 'Cat updated', data: updatedcat as Cat});
     }
+    next(new CustomError('Not owner', 403));
   } catch (error) {
     next(error);
   }
@@ -126,7 +136,7 @@ const catGet = async (
   next: NextFunction
 ) => {
   try {
-    const cat = await CatModel.findById(req.params.id);
+    const cat = await CatModel.findById(req.params.id).populate('owner');
     res.json(cat as unknown as Cat);
   } catch (error) {
     next(error);
@@ -140,7 +150,7 @@ const catListGet = async (
   next: NextFunction
 ) => {
   try {
-    const cats = await CatModel.find();
+    const cats = await CatModel.find().populate('owner');
     res.json(cats);
   } catch (error) {
     next(error);
@@ -150,12 +160,17 @@ const catListGet = async (
 // - catPost - create new cat
 const catPost = async (
   req: Request<{}, {}, Cat>,
-  res: Response<MessageResponse>,
+  res: Response<MessageResponse & {data: Cat}>,
   next: NextFunction
 ) => {
   try {
-    const cat = await CatModel.create(req.body);
-    res.status(201).json({message: 'Cat created'});
+    const cat = await CatModel.create({
+      ...req.body,
+      owner: res.locals.user,
+      location: res.locals.coords,
+      filename: req.file?.filename,
+    });
+    res.status(200).json({message: 'Cat created', data: cat});
   } catch (error) {
     next(error);
   }
